@@ -79,7 +79,7 @@ def usage():
     print("-p: MQTT Broker Port, default 1883")
     print("-h: show this help")
     print("-s: super help")
-    print("-t: mqtt topic")
+    print("-t: mqtt topic of the power switch, no default, mandatory, e.g. 'cmnd/tasmota_48F505/Power'")
     pass
 
 def on_connect(client, userdata, flags, rc):  # The callback for when the client connects to the broker
@@ -88,24 +88,81 @@ def on_connect(client, userdata, flags, rc):  # The callback for when the client
 
 def on_message(client, userdata, msg):  # The callback for when a PUBLISH message is received from the server.
     print("Message received-> " + msg.topic + " " + str(msg.payload))  # Print a received msg
+    global rastphasen_json
+    print(rastphasen_json)
 
     json_obj=json.loads(msg.payload)
     if "temperature" not in json_obj:
         print("No temperature, skipping")
     else:
-        tempcheck(json_obj["temperature"]/100,20)
+        result=tempcheck(json_obj["temperature"]/100,rastphasen_json[rastphase]["temperatur"])
+        print("Action", result)
+        if result == "off":
+            # check if current phase start time is set
+            try:
+                rastphase_starttime=rastphasen_json[rastphase]["starttime"]
+                change_phase()
+            except KeyError:
+                print('Message not received yet')
+                rastphasen_json[rastphase]["starttime"]=int(time.time())
+            
+def change_phase():
+    global rastphase
+    global rastphasen_json
+    try:
+        phase_runtime = rastphasen_json[rastphase]["rastzeit"] * 60   
+        phase_startime = rastphasen_json[rastphase]["starttime"]
+        current_time = int(time.time())
+        phase_stoptime = phase_runtime + phase_startime
+        print("Restlaufzeit der Rastphase:", rastphase, "beträgt ", phase_stoptime-current_time)
 
+        if current_time >= phase_stoptime:
+            if rastphase=="vorloesen":
+                rastphase="glukanaserast"
+
+            elif rastphase == "glukanaserast":
+                rastphase="ferularasten1"
+
+            elif rastphase == "ferularasten1":
+                rastphase="ferularasten2"
+
+            elif rastphase == "ferularasten2":
+                rastphase="eiweissrast"
+            
+            elif rastphase == "eiweissrast":
+                rastphase="maltoserast"
+            
+            elif rastphase == "maltoserast":
+                rastphase="verzuckerung"
+            
+            elif rastphase == "verzuckerung":
+                rastphase="abmaischen"
+            else:
+                print("Brauvorgang fertig")
+
+            print("Phase change to:", rastphase)
+        else:
+            print("no change requeired")
+
+    except:
+        print("Unexpected error:", sys.exc_info()[0])
+        raise
+ 
 def tempcheck(current_temperature, target_temperature):
     print("Aktuelle Temperatur: ", current_temperature, " vs Ziel Temperatur: ", target_temperature)
     low_target=target_temperature-1
-    if current_temperature < low_target:
-        tasmota("on")
+    print("low target temp:", low_target)
+
+    if int(current_temperature) < low_target:
+        action_value="on"
     else:
-        tasmota("off")
+        action_value="off"
+
+    tasmota(action_value)
+    return action_value
 
 def tasmota(state):
-    print("switch to state: ",state)
-    print("topic: ", topic)
+    print("Switch to state: ",state)
     ret = client.publish(topic,state)
 
 def on_publish(client,userdata,result):             #create function for callback
@@ -118,6 +175,7 @@ def main(argv=None):
     if argv is None:
         argv = sys.argv
     try:
+# make topic mandatory...
         options, prog_argv = getopt.getopt(argv[1:], "hsvV:G:F1:F2:E:M:Z:A:t:p")
     except getopt.GetoptError:
         sys.exit(1)
@@ -163,6 +221,8 @@ def main(argv=None):
     rastphasen_default_json = json.loads(rastphasen_default)
     global rastphasen_json
     rastphasen_json = rastphasen_default_json
+    global rastphase
+    rastphase="vorloesen"
 
     for name, value in options:
         if name == "-v":
@@ -179,39 +239,39 @@ def main(argv=None):
             topic = value
         elif name in ("-V"):
             newvalue=value.split(":")
-            rastphasen_json["vorloesen"]["temperatur"]=newvalue[0]
-            rastphasen_json["vorloesen"]["rastzeit"]=newvalue[1]
+            rastphasen_json["vorloesen"]["temperatur"]=int(newvalue[0])
+            rastphasen_json["vorloesen"]["rastzeit"]=int(newvalue[1])
         elif name in ("-G"):
             newvalue=value.split(":")
-            rastphasen_json["glukanaserast"]["temperatur"]=newvalue[0]
-            rastphasen_json["glukanaserast"]["rastzeit"]=newvalue[1]
+            rastphasen_json["glukanaserast"]["temperatur"]=int(newvalue[0])
+            rastphasen_json["glukanaserast"]["rastzeit"]=int(newvalue[1])
         elif name in ("-F1"):
             newvalue=value.split(":")
-            rastphasen_json["ferularasten1"]["temperatur"]=newvalue[0]
-            rastphasen_json["ferularasten1"]["rastzeit"]=newvalue[1]
+            rastphasen_json["ferularasten1"]["temperatur"]=int(newvalue[0])
+            rastphasen_json["ferularasten1"]["rastzeit"]=int(newvalue[1])
         elif name in ("-F2"):
             newvalue=value.split(":")
-            rastphasen_json["ferularasten2"]["temperatur"]=newvalue[0]
-            rastphasen_json["ferularasten2"]["rastzeit"]=newvalue[1]
+            rastphasen_json["ferularasten2"]["temperatur"]=int(newvalue[0])
+            rastphasen_json["ferularasten2"]["rastzeit"]=int(newvalue[1])
         elif name in ("-E"):
             newvalue=value.split(":")
-            rastphasen_json["eiweissrast"]["temperatur"]=newvalue[0]
-            rastphasen_json["eiweissrast"]["rastzeit"]=newvalue[1]
+            rastphasen_json["eiweissrast"]["temperatur"]=int(newvalue[0])
+            rastphasen_json["eiweissrast"]["rastzeit"]=int(newvalue[1])
         elif name in ("-M"):
             newvalue=value.split(":")
-            rastphasen_json["maltoserast"]["temperatur"]=newvalue[0]
-            rastphasen_json["maltoserast"]["rastzeit"]=newvalue[1]
+            rastphasen_json["maltoserast"]["temperatur"]=int(newvalue[0])
+            rastphasen_json["maltoserast"]["rastzeit"]=int(newvalue[1])
         elif name in ("-Z"):
             newvalue=value.split(":")
-            rastphasen_json["verzuckerung"]["temperatur"]=newvalue[0]
-            rastphasen_json["verzuckerung"]["rastzeit"]=newvalue[1]
+            rastphasen_json["verzuckerung"]["temperatur"]=int(newvalue[0])
+            rastphasen_json["verzuckerung"]["rastzeit"]=int(newvalue[1])
         elif name in ("-A"):
             newvalue=value.split(":")
-            rastphasen_json["abmaischen"]["temperatur"]=newvalue[0]
-            rastphasen_json["abmaischen"]["rastzeit"]=newvalue[1]
+            rastphasen_json["abmaischen"]["temperatur"]=int(newvalue[0])
+            rastphasen_json["abmaischen"]["rastzeit"]=int(newvalue[1])
 
     print(rastphasen_json)
-#    print ("Aktuelle Rast Phase:", rastphase)
+    print ("Aktuelle Rast Phase:", rastphase)
 
     global client
     client = mqtt.Client("digi_mqtt_test")  # Create instance of client with client ID “digi_mqtt_test”
