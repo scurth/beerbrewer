@@ -69,13 +69,13 @@ def usage():
     print("Usage: brew.py [-v] [-V TEMP:MINUTES]")
     print("-v: verbose output, default False")
     print("-V: Vorlösen, default: ", rastphasen_default_json["vorloesen"]["rastzeit"]," Minuten @ ", rastphasen_default_json["vorloesen"]["temperatur"], "°C" )
-    print("-G: Glukanaserast, default 39:30 = 39C@30min")
-    print("-F1: Ferularasten1, default 45:15 = 45C@15min")
-    print("-F2: Ferularasten2, default 48:15 = 48C@15min")
-    print("-E: Eiweißrast, default 52:20 = 52C@20min")
-    print("-M: Maltoserast, default 63:60 = 63C@60min")
-    print("-Z: Verzuckerung, default 72:30 = 72C@30min")
-    print("-A: Abmaischen, default 78:20 = 78C@20min")
+    print("-G: Glukanaserast, default: ", rastphasen_default_json["glukanaserast"]["rastzeit"]," Minuten @ ", rastphasen_default_json["glukanaserast"]["temperatur"], "°C" )
+    print("-F1: Ferularasten1, default: ", rastphasen_default_json["ferularasten1"]["rastzeit"]," Minuten @ ", rastphasen_default_json["ferularasten1"]["temperatur"], "°C" )
+    print("-F2: Ferularasten2, default: ", rastphasen_default_json["ferularasten2"]["rastzeit"]," Minuten @ ", rastphasen_default_json["ferularasten2"]["temperatur"], "°C" )
+    print("-E: Eiweißrast, default: ", rastphasen_default_json["eiweissrast"]["rastzeit"]," Minuten @ ", rastphasen_default_json["eiweissrast"]["temperatur"], "°C" )
+    print("-M: Maltoserast, default: ", rastphasen_default_json["maltoserast"]["rastzeit"]," Minuten @ ", rastphasen_default_json["maltoserast"]["temperatur"], "°C" )
+    print("-Z: Verzuckerung, default: ", rastphasen_default_json["verzuckerung"]["rastzeit"]," Minuten @ ", rastphasen_default_json["verzuckerung"]["temperatur"], "°C" )
+    print("-A: Abmaischen, default: ", rastphasen_default_json["abmaischen"]["rastzeit"]," Minuten @ ", rastphasen_default_json["abmaischen"]["temperatur"], "°C" )
     print("-p: MQTT Broker Port, default 1883")
     print("-h: show this help")
     print("-s: super help")
@@ -132,8 +132,34 @@ def main(argv=None):
 	"glukanaserast": {
 		"temperatur": 39,
 		"rastzeit": 30
+	},
+	"ferularasten1": {
+		"temperatur": 45,
+		"rastzeit": 15
+	},
+	"ferularasten2": {
+		"temperatur": 48,
+		"rastzeit": 15
+	},
+	"eiweissrast": {
+		"temperatur": 52,
+		"rastzeit": 15
+	},
+	"maltoserast": {
+		"temperatur": 63,
+		"rastzeit": 60
+	},
+	"verzuckerung": {
+		"temperatur": 72,
+		"rastzeit": 30
+	},
+	"abmaischen": {
+		"temperatur": 78,
+		"rastzeit": 20
 	}
     }"""
+
+
     rastphasen_default_json = json.loads(rastphasen_default)
     global rastphasen_json
     rastphasen_json = rastphasen_default_json
@@ -152,11 +178,37 @@ def main(argv=None):
             global topic
             topic = value
         elif name in ("-V"):
-            print("Value: ", value)
             newvalue=value.split(":")
             rastphasen_json["vorloesen"]["temperatur"]=newvalue[0]
             rastphasen_json["vorloesen"]["rastzeit"]=newvalue[1]
-
+        elif name in ("-G"):
+            newvalue=value.split(":")
+            rastphasen_json["glukanaserast"]["temperatur"]=newvalue[0]
+            rastphasen_json["glukanaserast"]["rastzeit"]=newvalue[1]
+        elif name in ("-F1"):
+            newvalue=value.split(":")
+            rastphasen_json["ferularasten1"]["temperatur"]=newvalue[0]
+            rastphasen_json["ferularasten1"]["rastzeit"]=newvalue[1]
+        elif name in ("-F2"):
+            newvalue=value.split(":")
+            rastphasen_json["ferularasten2"]["temperatur"]=newvalue[0]
+            rastphasen_json["ferularasten2"]["rastzeit"]=newvalue[1]
+        elif name in ("-E"):
+            newvalue=value.split(":")
+            rastphasen_json["eiweissrast"]["temperatur"]=newvalue[0]
+            rastphasen_json["eiweissrast"]["rastzeit"]=newvalue[1]
+        elif name in ("-M"):
+            newvalue=value.split(":")
+            rastphasen_json["maltoserast"]["temperatur"]=newvalue[0]
+            rastphasen_json["maltoserast"]["rastzeit"]=newvalue[1]
+        elif name in ("-Z"):
+            newvalue=value.split(":")
+            rastphasen_json["verzuckerung"]["temperatur"]=newvalue[0]
+            rastphasen_json["verzuckerung"]["rastzeit"]=newvalue[1]
+        elif name in ("-A"):
+            newvalue=value.split(":")
+            rastphasen_json["abmaischen"]["temperatur"]=newvalue[0]
+            rastphasen_json["abmaischen"]["rastzeit"]=newvalue[1]
 
     print(rastphasen_json)
 #    print ("Aktuelle Rast Phase:", rastphase)
