@@ -3,6 +3,7 @@ import sys
 import getopt
 import json
 import time
+import requests
 
 superhelp="""Vorlösen
 Diese Raststufe folgt unmittelbar auf das Einmaischen und ermöglicht es den Malzenzymen besonders gut in Lösung zu gehen. Allerdings sind heutige Malze so hochwertig vorverarbeitet, daß dieser Schritt normalerweise nicht mehr notwendig ist.
@@ -80,6 +81,8 @@ def usage():
     print("-h: show this help")
     print("-s: super help")
     print("-t: mqtt topic of the power switch, no default, mandatory, e.g. 'cmnd/tasmota_48F505/Power'")
+    print("-B: telegram bot_token")
+    print("-I: telegram bot_chatID")
     pass
 
 def on_connect(client, userdata, flags, rc):  # The callback for when the client connects to the broker
@@ -109,8 +112,9 @@ def on_message(client, userdata, msg):  # The callback for when a PUBLISH messag
 def change_phase():
     global rastphase
     global rastphasen_json
+
     try:
-        phase_runtime = rastphasen_json[rastphase]["rastzeit"] * 60   
+        phase_runtime = rastphasen_json[rastphase]["rastzeit"] * 60
         phase_startime = rastphasen_json[rastphase]["starttime"]
         current_time = int(time.time())
         phase_stoptime = phase_runtime + phase_startime
@@ -140,9 +144,11 @@ def change_phase():
             else:
                 print("Brauvorgang fertig")
 
-            print("Phase change to:", rastphase)
+            nachricht = "Rastphase gewechselt zu " + str(rastphase) + ". Neue Zieltemperatur ist " + str(rastphasen_json[rastphase]["temperatur"]) + "°C."
+            print(nachricht)
+            telegram_bot_sendtext(nachricht)
         else:
-            print("no change requeired")
+            print("no change required")
 
     except:
         print("Unexpected error:", sys.exc_info()[0])
@@ -171,12 +177,23 @@ def on_publish(client,userdata,result):             #create function for callbac
         print(ret)
     pass
 
+def telegram_bot_sendtext(bot_message):
+    global bot_token
+    global bot_chatID
+
+    send_text = 'https://api.telegram.org/bot' + bot_token + '/sendMessage?chat_id=' + bot_chatID + '&parse_mode=Markdown&text=' + bot_message
+    response = requests.get(send_text)
+    return response.json()
+
 def main(argv=None):
+    global bot_token
+    global bot_chatID
+
     if argv is None:
         argv = sys.argv
     try:
 # make topic mandatory...
-        options, prog_argv = getopt.getopt(argv[1:], "hsvV:G:F1:F2:E:M:Z:A:t:p")
+        options, prog_argv = getopt.getopt(argv[1:], "hsvB:I:V:G:F1:F2:E:M:Z:A:t:p")
     except getopt.GetoptError:
         sys.exit(1)
 
@@ -269,6 +286,11 @@ def main(argv=None):
             newvalue=value.split(":")
             rastphasen_json["abmaischen"]["temperatur"]=int(newvalue[0])
             rastphasen_json["abmaischen"]["rastzeit"]=int(newvalue[1])
+        elif name in ("-B"):
+            bot_token = value
+            print(value)
+        elif name in ("-I"):
+            bot_chatID = value
 
     print(rastphasen_json)
     print ("Aktuelle Rast Phase:", rastphase)
